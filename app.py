@@ -1,5 +1,8 @@
+import base64
 import json
 import os
+import re
+import uuid
 from pathlib import Path
 
 import anthropic
@@ -24,40 +27,191 @@ def load_json(filename: str) -> list:
         return json.load(f)
 
 
+def save_json(filename: str, data: list) -> None:
+    with open(DATA_DIR / filename, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def get_claude_client() -> anthropic.Anthropic:
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY is not set")
+    return anthropic.Anthropic(api_key=api_key)
+
+
+# ---------- Models ----------
+
 class GenerateRequest(BaseModel):
     resume: str
     job_id: str
     template_id: str
 
 
-class Job(BaseModel):
-    id: str
+class ExtractResumeRequest(BaseModel):
+    image_base64: str  # data URL (data:image/png;base64,...)
+
+
+class JobCreate(BaseModel):
     title: str
     company: str
     description: str
 
 
-class Template(BaseModel):
-    id: str
+class JobUpdate(BaseModel):
+    title: str
+    company: str
+    description: str
+
+
+class TemplateCreate(BaseModel):
     job_id: str
     name: str
     subject: str
     body: str
 
 
+class TemplateUpdate(BaseModel):
+    job_id: str
+    name: str
+    subject: str
+    body: str
+
+
+# ---------- Resume extraction ----------
+
+@app.post("/api/extract-resume")
+def extract_resume(req: ExtractResumeRequest) -> dict:
+    client = get_claude_client()
+
+    # Strip data URL prefix to get raw base64
+    raw = req.image_base64
+    if "," in raw:
+        media_type_part, raw = raw.split(",", 1)
+        media_type = media_type_part.split(":")[1].split(";")[0]
+    else:
+        media_type = "image/png"
+
+    message = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=4096,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": raw,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": (
+                            "この画像はビズリーチの候補者レジュメページです。"
+                            "画面に表示されている候補者の情報（氏名、職歴、スキル、学歴、資格など）を"
+                            "すべて読み取り、構造化されたテキストとして出力してください。"
+                            "画像内のテキストをできるだけ忠実に抽出し、レジュメとして読みやすい形式でまとめてください。"
+                            "余計な説明は不要です。抽出したレジュメテキストだけを出力してください。"
+                        ),
+                    },
+                ],
+            }
+        ],
+    )
+
+    return {"resume_text": message.content[0].text.strip()}
+
+
+# ---------- Jobs CRUD ----------
+
 @app.get("/api/jobs")
-def get_jobs() -> list[Job]:
+def get_jobs() -> list:
     return load_json("jobs.json")
 
 
+@app.post("/api/jobs", status_code=201)
+def create_job(body: JobCreate) -> dict:
+    jobs = load_json("jobs.json")
+    new_job = {"id": f"job_{uuid.uuid4().hex[:8]}", **body.model_dump()}
+    jobs.append(new_job)
+    save_json("jobs.json", jobs)
+    return new_job
+
+
+@app.put("/api/jobs/{job_id}")
+def update_job(job_id: str, body: JobUpdate) -> dict:
+    jobs = load_json("jobs.json")
+    idx = next((i for i, j in enumerate(jobs) if j["id"] == job_id), None)
+    if idx is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    jobs[idx] = {"id": job_id, **body.model_dump()}
+    save_json("jobs.json", jobs)
+    return jobs[idx]
+
+
+@app.delete("/api/jobs/{job_id}", status_code=204)
+def delete_job(job_id: str) -> None:
+    jobs = load_json("jobs.json")
+    new_jobs = [j for j in jobs if j["id"] != job_id]
+    if len(new_jobs) == len(jobs):
+        raise HTTPException(status_code=404, detail="Job not found")
+    save_json("jobs.json", new_jobs)
+    # Cascade: remove linked templates
+    templates = load_json("templates.json")
+    save_json("templates.json", [t for t in templates if t["job_id"] != job_id])
+
+
+# ---------- Templates CRUD ----------
+
+@app.get("/api/templates")
+def get_all_templates() -> list:
+    return load_json("templates.json")
+
+
 @app.get("/api/templates/{job_id}")
-def get_templates_for_job(job_id: str) -> list[Template]:
+def get_templates_for_job(job_id: str) -> list:
     templates = load_json("templates.json")
     matched = [t for t in templates if t["job_id"] == job_id]
     if not matched:
         raise HTTPException(status_code=404, detail="No templates found for this job")
     return matched
 
+
+@app.post("/api/templates", status_code=201)
+def create_template(body: TemplateCreate) -> dict:
+    jobs = load_json("jobs.json")
+    if not any(j["id"] == body.job_id for j in jobs):
+        raise HTTPException(status_code=404, detail="Job not found")
+    templates = load_json("templates.json")
+    new_tpl = {"id": f"tpl_{uuid.uuid4().hex[:8]}", **body.model_dump()}
+    templates.append(new_tpl)
+    save_json("templates.json", templates)
+    return new_tpl
+
+
+@app.put("/api/templates/{tpl_id}")
+def update_template(tpl_id: str, body: TemplateUpdate) -> dict:
+    templates = load_json("templates.json")
+    idx = next((i for i, t in enumerate(templates) if t["id"] == tpl_id), None)
+    if idx is None:
+        raise HTTPException(status_code=404, detail="Template not found")
+    templates[idx] = {"id": tpl_id, **body.model_dump()}
+    save_json("templates.json", templates)
+    return templates[idx]
+
+
+@app.delete("/api/templates/{tpl_id}", status_code=204)
+def delete_template(tpl_id: str) -> None:
+    templates = load_json("templates.json")
+    new_tpl = [t for t in templates if t["id"] != tpl_id]
+    if len(new_tpl) == len(templates):
+        raise HTTPException(status_code=404, detail="Template not found")
+    save_json("templates.json", new_tpl)
+
+
+# ---------- Scout message generation ----------
 
 @app.post("/api/generate")
 def generate_scout_message(req: GenerateRequest) -> dict:
@@ -72,11 +226,7 @@ def generate_scout_message(req: GenerateRequest) -> dict:
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
 
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY is not set")
-
-    client = anthropic.Anthropic(api_key=api_key)
+    client = get_claude_client()
 
     prompt = f"""あなたはビズリーチのスカウト文作成の専門家です。
 以下の情報をもとに、候補者に刺さる個別最適化されたスカウト文（件名と本文）を作成してください。
@@ -116,7 +266,6 @@ def generate_scout_message(req: GenerateRequest) -> dict:
     try:
         result = json.loads(content)
     except json.JSONDecodeError:
-        import re
         match = re.search(r'\{[\s\S]*\}', content)
         if match:
             result = json.loads(match.group())
@@ -131,7 +280,15 @@ def generate_scout_message(req: GenerateRequest) -> dict:
     }
 
 
+# ---------- Pages ----------
+
 @app.get("/", response_class=HTMLResponse)
 def index():
     with open(STATIC_DIR / "index.html", encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin():
+    with open(STATIC_DIR / "admin.html", encoding="utf-8") as f:
         return f.read()

@@ -17,14 +17,17 @@
     header {
       background: #1a1a2e;
       color: #fff;
-      padding: 16px 24px;
+      padding: 14px 24px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      justify-content: space-between;
     }
 
-    header h1 { font-size: 1.2rem; font-weight: 600; }
-    header span { font-size: 0.8rem; color: #a0aec0; }
+    header .left { display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 1.1rem; font-weight: 600; }
+    header span { font-size: 0.78rem; color: #a0aec0; }
+    header a { color: #90cdf4; font-size: 0.82rem; text-decoration: none; }
+    header a:hover { text-decoration: underline; }
 
     .container {
       max-width: 1200px;
@@ -35,9 +38,7 @@
       gap: 20px;
     }
 
-    @media (max-width: 768px) {
-      .container { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
 
     .card {
       background: #fff;
@@ -56,7 +57,7 @@
       gap: 8px;
     }
 
-    .card h2 .badge {
+    .badge {
       background: #ebf4ff;
       color: #3182ce;
       font-size: 0.72rem;
@@ -92,9 +93,47 @@
       box-shadow: 0 0 0 3px rgba(49,130,206,0.12);
     }
 
-    textarea { min-height: 180px; }
+    textarea { min-height: 200px; }
 
     .form-group { margin-bottom: 16px; }
+
+    .resume-actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-scan, .btn-upload {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border-radius: 7px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s;
+    }
+
+    .btn-scan {
+      background: #ebf8ff;
+      color: #2b6cb0;
+      border: 1px solid #bee3f8;
+    }
+
+    .btn-scan:hover:not(:disabled) { background: #bee3f8; }
+
+    .btn-upload {
+      background: #f0fff4;
+      color: #276749;
+      border: 1px solid #c6f6d5;
+    }
+
+    .btn-upload:hover { background: #c6f6d5; }
+
+    .btn-scan:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .job-preview {
       background: #f8fafc;
@@ -104,7 +143,7 @@
       font-size: 0.82rem;
       color: #4a5568;
       white-space: pre-wrap;
-      max-height: 160px;
+      max-height: 140px;
       overflow-y: auto;
       line-height: 1.6;
     }
@@ -124,11 +163,7 @@
       transition: background 0.15s, opacity 0.15s;
     }
 
-    .btn-primary {
-      background: #3182ce;
-      color: #fff;
-    }
-
+    .btn-primary { background: #3182ce; color: #fff; }
     .btn-primary:hover:not(:disabled) { background: #2b6cb0; }
     .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
@@ -142,13 +177,9 @@
 
     .btn-secondary:hover { background: #e2e8f0; }
 
-    .result-section {
-      grid-column: 1 / -1;
-    }
+    .result-section { grid-column: 1 / -1; }
 
-    .result-field {
-      margin-bottom: 16px;
-    }
+    .result-field { margin-bottom: 16px; }
 
     .result-field label {
       font-size: 0.82rem;
@@ -171,12 +202,16 @@
 
     .spinner {
       display: inline-block;
-      width: 16px;
-      height: 16px;
+      width: 16px; height: 16px;
       border: 2px solid rgba(255,255,255,0.4);
       border-top-color: #fff;
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
+    }
+
+    .spinner-dark {
+      border-color: rgba(49,130,206,0.3);
+      border-top-color: #3182ce;
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -217,25 +252,76 @@
     }
 
     .copy-btn:hover { background: #bee3f8; }
+
+    /* Scan overlay */
+    .scan-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+    }
+
+    .scan-box {
+      background: #fff;
+      border-radius: 14px;
+      padding: 28px;
+      max-width: 420px;
+      width: 90%;
+      text-align: center;
+    }
+
+    .scan-box h3 { font-size: 1rem; margin-bottom: 10px; }
+    .scan-box p { font-size: 0.85rem; color: #718096; line-height: 1.6; margin-bottom: 20px; }
+
+    .scan-box .btn-row {
+      display: flex; gap: 10px;
+    }
+
+    .scan-box .btn-row button {
+      flex: 1; padding: 10px; border-radius: 8px; font-size: 0.9rem;
+      font-weight: 600; cursor: pointer; border: none;
+    }
+
+    .btn-confirm { background: #3182ce; color: #fff; }
+    .btn-confirm:hover { background: #2b6cb0; }
+    .btn-cancel { background: #edf2f7; color: #4a5568; }
+    .btn-cancel:hover { background: #e2e8f0; }
+
+    #file-input { display: none; }
   </style>
 </head>
 <body>
   <header>
-    <h1>スカウト文ジェネレーター</h1>
-    <span>Powered by Claude AI</span>
+    <div class="left">
+      <h1>スカウト文ジェネレーター</h1>
+      <span>Powered by Claude AI</span>
+    </div>
+    <a href="/admin">⚙ 管理画面</a>
   </header>
 
   <div class="container">
-    <!-- 左カラム: レジュメ入力 -->
+    <!-- 左: レジュメ入力 -->
     <div class="card">
       <h2>候補者レジュメ <span class="badge">STEP 1</span></h2>
       <div class="form-group">
-        <label>ビズリーチのレジュメをペーストしてください</label>
-        <textarea id="resume" placeholder="氏名、職歴、スキル、学歴などを含むレジュメテキストをここに貼り付けてください..."></textarea>
+        <label>レジュメを入力 または 画面・画像から読み取る</label>
+        <div class="resume-actions">
+          <button class="btn-scan" id="scan-btn" onclick="startScreenScan()">
+            🖥 画面をスキャン
+          </button>
+          <button class="btn-upload" onclick="document.getElementById('file-input').click()">
+            🖼 画像をアップロード
+          </button>
+          <input type="file" id="file-input" accept="image/*" onchange="handleFileUpload(event)" />
+        </div>
+        <textarea id="resume" placeholder="氏名、職歴、スキル、学歴などを含むレジュメテキストをここに貼り付けてください...&#10;または上のボタンでビズリーチの画面から自動読み取り"></textarea>
+      </div>
+      <div id="scan-status" class="hidden" style="font-size:0.82rem; color:#3182ce; display:flex; align-items:center; gap:8px;">
+        <span class="spinner spinner-dark"></span> レジュメを読み取り中...
       </div>
     </div>
 
-    <!-- 右カラム: 求人・テンプレート選択 -->
+    <!-- 右: 求人・テンプレート選択 -->
     <div class="card">
       <h2>求人票・テンプレート選択 <span class="badge">STEP 2</span></h2>
       <div class="form-group">
@@ -258,7 +344,7 @@
       <div id="error-area" class="hidden"></div>
     </div>
 
-    <!-- 出力エリア -->
+    <!-- 出力 -->
     <div class="card result-section hidden" id="result-section">
       <h2>生成されたスカウト文</h2>
       <div id="result-meta" class="success-tag"></div>
@@ -274,9 +360,23 @@
     </div>
   </div>
 
+  <!-- スキャン確認モーダル -->
+  <div class="scan-overlay hidden" id="scan-overlay">
+    <div class="scan-box">
+      <h3>🖥 画面スキャン</h3>
+      <p>
+        「共有開始」をクリックした後、ビズリーチの候補者ページが表示されているウィンドウ（またはタブ）を選択してください。<br><br>
+        Claudeが画面を読み取り、レジュメを自動入力します。
+      </p>
+      <div class="btn-row">
+        <button class="btn-cancel" onclick="closeScanOverlay()">キャンセル</button>
+        <button class="btn-confirm" onclick="doScreenCapture()">共有開始</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let jobs = [];
-    let templates = [];
 
     async function loadJobs() {
       const res = await fetch('/api/jobs');
@@ -304,18 +404,28 @@
       document.getElementById('job-preview').textContent = job.description;
       document.getElementById('job-preview-area').style.display = 'block';
 
-      const res = await fetch(`/api/templates/${jobId}`);
-      templates = await res.json();
-      const sel = document.getElementById('template-select');
-      sel.innerHTML = '';
-      templates.forEach(t => {
-        const opt = document.createElement('option');
-        opt.value = t.id;
-        opt.textContent = t.name;
-        sel.appendChild(opt);
-      });
-      document.getElementById('template-area').style.display = 'block';
-      document.getElementById('generate-btn').disabled = false;
+      try {
+        const res = await fetch(`/api/templates/${jobId}`);
+        if (!res.ok) {
+          document.getElementById('template-area').style.display = 'none';
+          showError('この求人票にテンプレートがありません。管理画面から追加してください。');
+          return;
+        }
+        const templates = await res.json();
+        const sel = document.getElementById('template-select');
+        sel.innerHTML = '';
+        templates.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = t.name;
+          sel.appendChild(opt);
+        });
+        document.getElementById('template-area').style.display = 'block';
+        document.getElementById('generate-btn').disabled = false;
+        hideError();
+      } catch {
+        showError('テンプレートの読み込みに失敗しました');
+      }
     }
 
     async function generate() {
@@ -323,14 +433,8 @@
       const jobId = document.getElementById('job-select').value;
       const templateId = document.getElementById('template-select').value;
 
-      if (!resume) {
-        showError('レジュメを入力してください');
-        return;
-      }
-      if (!jobId || !templateId) {
-        showError('求人票とテンプレートを選択してください');
-        return;
-      }
+      if (!resume) { showError('レジュメを入力してください'); return; }
+      if (!jobId || !templateId) { showError('求人票とテンプレートを選択してください'); return; }
 
       const btn = document.getElementById('generate-btn');
       btn.disabled = true;
@@ -343,17 +447,11 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ resume, job_id: jobId, template_id: templateId }),
         });
-
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.detail || 'エラーが発生しました');
-        }
-
+        if (!res.ok) { const e = await res.json(); throw new Error(e.detail); }
         const data = await res.json();
         document.getElementById('result-subject').textContent = data.subject;
         document.getElementById('result-body').textContent = data.body;
-        document.getElementById('result-meta').textContent =
-          `✓ ${data.company} ／ ${data.job_title}`;
+        document.getElementById('result-meta').textContent = `✓ ${data.company} ／ ${data.job_title}`;
         document.getElementById('result-section').classList.remove('hidden');
         document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
       } catch (e) {
@@ -363,6 +461,82 @@
         btn.innerHTML = 'スカウト文を生成する';
       }
     }
+
+    // --- Screen scan ---
+
+    function startScreenScan() {
+      document.getElementById('scan-overlay').classList.remove('hidden');
+    }
+
+    function closeScanOverlay() {
+      document.getElementById('scan-overlay').classList.add('hidden');
+    }
+
+    async function doScreenCapture() {
+      closeScanOverlay();
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        showError('このブラウザは画面キャプチャに対応していません。Chrome / Edge をお使いください。');
+        return;
+      }
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      } catch {
+        return; // ユーザーがキャンセル
+      }
+
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      await video.play();
+
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      stream.getTracks().forEach(t => t.stop());
+
+      const dataUrl = canvas.toDataURL('image/png');
+      await sendImageToExtract(dataUrl);
+    }
+
+    async function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (e) => await sendImageToExtract(e.target.result);
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    }
+
+    async function sendImageToExtract(dataUrl) {
+      const statusEl = document.getElementById('scan-status');
+      const scanBtn = document.getElementById('scan-btn');
+      statusEl.classList.remove('hidden');
+      statusEl.style.display = 'flex';
+      scanBtn.disabled = true;
+      hideError();
+
+      try {
+        const res = await fetch('/api/extract-resume', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image_base64: dataUrl }),
+        });
+        if (!res.ok) { const e = await res.json(); throw new Error(e.detail); }
+        const data = await res.json();
+        document.getElementById('resume').value = data.resume_text;
+      } catch (e) {
+        showError('読み取りに失敗しました: ' + e.message);
+      } finally {
+        statusEl.style.display = 'none';
+        statusEl.classList.add('hidden');
+        scanBtn.disabled = false;
+      }
+    }
+
+    // --- Helpers ---
 
     function showError(msg) {
       const el = document.getElementById('error-area');
@@ -379,9 +553,8 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    async function copyText(elementId) {
-      const text = document.getElementById(elementId).textContent;
-      await navigator.clipboard.writeText(text);
+    async function copyText(id) {
+      await navigator.clipboard.writeText(document.getElementById(id).textContent);
       alert('コピーしました！');
     }
 

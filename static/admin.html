@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理画面 - スカウト文ジェネレーター</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      background: #f5f7fa;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header .left { display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 1.1rem; font-weight: 600; }
+    header span { font-size: 0.78rem; color: #718096; }
+    header a { color: #90cdf4; font-size: 0.82rem; text-decoration: none; }
+    header a:hover { text-decoration: underline; }
+
+    .tabs {
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      padding: 0 24px;
+    }
+
+    .tab {
+      padding: 14px 20px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #718096;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .tab.active { color: #3182ce; border-bottom-color: #3182ce; }
+    .tab:hover:not(.active) { color: #4a5568; }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .section-header h2 { font-size: 1rem; font-weight: 600; color: #2d3748; }
+
+    .btn-add {
+      padding: 8px 16px;
+      background: #3182ce;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-add:hover { background: #2b6cb0; }
+
+    /* List cards */
+    .item-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .item-card .info { flex: 1; min-width: 0; }
+    .item-card .title { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
+    .item-card .sub { font-size: 0.8rem; color: #718096; }
+    .item-card .desc {
+      font-size: 0.8rem;
+      color: #4a5568;
+      margin-top: 6px;
+      white-space: pre-wrap;
+      max-height: 60px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    .btn-edit, .btn-delete {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-edit { background: #ebf8ff; color: #2b6cb0; }
+    .btn-edit:hover { background: #bee3f8; }
+    .btn-delete { background: #fff5f5; color: #c53030; }
+    .btn-delete:hover { background: #fed7d7; }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: #a0aec0;
+      font-size: 0.9rem;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+    }
+
+    .modal {
+      background: #fff;
+      border-radius: 14px;
+      padding: 28px;
+      width: 90%;
+      max-width: 580px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 20px; }
+
+    .form-group { margin-bottom: 16px; }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: #718096;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"], select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      color: #1a1a2e;
+      background: #fff;
+      transition: border-color 0.15s;
+      resize: vertical;
+    }
+
+    input[type="text"]:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #3182ce;
+      box-shadow: 0 0 0 3px rgba(49,130,206,0.12);
+    }
+
+    textarea { min-height: 120px; }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .btn-save {
+      padding: 10px 20px;
+      background: #3182ce;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-save:hover { background: #2b6cb0; }
+    .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .btn-cancel-modal {
+      padding: 10px 20px;
+      background: #edf2f7;
+      color: #4a5568;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn-cancel-modal:hover { background: #e2e8f0; }
+
+    .hidden { display: none; }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #276749;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      z-index: 200;
+      animation: fadeInUp 0.2s ease;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .hint {
+      font-size: 0.75rem;
+      color: #a0aec0;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="left">
+      <h1>管理画面</h1>
+      <span>スカウト文ジェネレーター</span>
+    </div>
+    <a href="/">← ジェネレーターに戻る</a>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('jobs')">求人票</div>
+    <div class="tab" onclick="switchTab('templates')">テンプレート</div>
+  </div>
+
+  <div class="container">
+    <!-- 求人票タブ -->
+    <div class="tab-panel active" id="tab-jobs">
+      <div class="section-header">
+        <h2>求人票一覧</h2>
+        <button class="btn-add" onclick="openJobModal()">+ 新規追加</button>
+      </div>
+      <div id="jobs-list"></div>
+    </div>
+
+    <!-- テンプレートタブ -->
+    <div class="tab-panel" id="tab-templates">
+      <div class="section-header">
+        <h2>テンプレート一覧</h2>
+        <button class="btn-add" onclick="openTplModal()">+ 新規追加</button>
+      </div>
+      <div id="templates-list"></div>
+    </div>
+  </div>
+
+  <!-- 求人票モーダル -->
+  <div class="modal-overlay hidden" id="job-modal-overlay">
+    <div class="modal">
+      <h3 id="job-modal-title">求人票を追加</h3>
+      <div class="form-group">
+        <label>求人タイトル *</label>
+        <input type="text" id="job-title" placeholder="例: シニアバックエンドエンジニア" />
+      </div>
+      <div class="form-group">
+        <label>会社名 *</label>
+        <input type="text" id="job-company" placeholder="例: 株式会社テックスタート" />
+      </div>
+      <div class="form-group">
+        <label>求人内容 *</label>
+        <textarea id="job-description" placeholder="業務内容、求めるスキル、待遇など..."></textarea>
+        <p class="hint">スカウト文生成の参考情報になります。詳しく書くほど精度が上がります。</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel-modal" onclick="closeJobModal()">キャンセル</button>
+        <button class="btn-save" id="job-save-btn" onclick="saveJob()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- テンプレートモーダル -->
+  <div class="modal-overlay hidden" id="tpl-modal-overlay">
+    <div class="modal">
+      <h3 id="tpl-modal-title">テンプレートを追加</h3>
+      <div class="form-group">
+        <label>紐づける求人票 *</label>
+        <select id="tpl-job-id"></select>
+      </div>
+      <div class="form-group">
+        <label>テンプレート名 *</label>
+        <input type="text" id="tpl-name" placeholder="例: バックエンド向け標準テンプレート" />
+      </div>
+      <div class="form-group">
+        <label>件名 *</label>
+        <input type="text" id="tpl-subject" placeholder="例: 【ご経歴拝見】{candidate_name}様のご経歴にご注目しました" />
+        <p class="hint">使えるプレースホルダー: {candidate_name} {highlight_point} {skill_match} {company_appeal}</p>
+      </div>
+      <div class="form-group">
+        <label>本文 *</label>
+        <textarea id="tpl-body" style="min-height:200px" placeholder="{candidate_name}様&#10;&#10;はじめまして..."></textarea>
+        <p class="hint">プレースホルダーをClaudeが候補者情報に合わせて自動補完します。</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel-modal" onclick="closeTplModal()">キャンセル</button>
+        <button class="btn-save" id="tpl-save-btn" onclick="saveTemplate()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let jobs = [];
+    let templates = [];
+    let editingJobId = null;
+    let editingTplId = null;
+
+    async function loadAll() {
+      [jobs, templates] = await Promise.all([
+        fetch('/api/jobs').then(r => r.json()),
+        fetch('/api/templates').then(r => r.json()),
+      ]);
+      renderJobs();
+      renderTemplates();
+    }
+
+    // --- Tab ---
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach((el, i) => {
+        el.classList.toggle('active', ['jobs', 'templates'][i] === name);
+      });
+      document.getElementById('tab-jobs').classList.toggle('active', name === 'jobs');
+      document.getElementById('tab-templates').classList.toggle('active', name === 'templates');
+    }
+
+    // --- Jobs ---
+    function renderJobs() {
+      const el = document.getElementById('jobs-list');
+      if (!jobs.length) {
+        el.innerHTML = '<div class="empty-state">求人票がまだありません。「新規追加」から登録してください。</div>';
+        return;
+      }
+      el.innerHTML = jobs.map(j => `
+        <div class="item-card">
+          <div class="info">
+            <div class="title">${esc(j.title)}</div>
+            <div class="sub">${esc(j.company)}</div>
+            <div class="desc">${esc(j.description)}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn-edit" onclick="openJobModal('${j.id}')">編集</button>
+            <button class="btn-delete" onclick="deleteJob('${j.id}', '${esc(j.title)}')">削除</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function openJobModal(id = null) {
+      editingJobId = id;
+      document.getElementById('job-modal-title').textContent = id ? '求人票を編集' : '求人票を追加';
+      if (id) {
+        const j = jobs.find(j => j.id === id);
+        document.getElementById('job-title').value = j.title;
+        document.getElementById('job-company').value = j.company;
+        document.getElementById('job-description').value = j.description;
+      } else {
+        document.getElementById('job-title').value = '';
+        document.getElementById('job-company').value = '';
+        document.getElementById('job-description').value = '';
+      }
+      document.getElementById('job-modal-overlay').classList.remove('hidden');
+    }
+
+    function closeJobModal() {
+      document.getElementById('job-modal-overlay').classList.add('hidden');
+      editingJobId = null;
+    }
+
+    async function saveJob() {
+      const title = document.getElementById('job-title').value.trim();
+      const company = document.getElementById('job-company').value.trim();
+      const description = document.getElementById('job-description').value.trim();
+      if (!title || !company || !description) { alert('すべての項目を入力してください'); return; }
+
+      const btn = document.getElementById('job-save-btn');
+      btn.disabled = true;
+
+      try {
+        const url = editingJobId ? `/api/jobs/${editingJobId}` : '/api/jobs';
+        const method = editingJobId ? 'PUT' : 'POST';
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, company, description }),
+        });
+        if (!res.ok) throw new Error((await res.json()).detail);
+        await loadAll();
+        closeJobModal();
+        showToast(editingJobId ? '求人票を更新しました' : '求人票を追加しました');
+      } catch (e) {
+        alert('保存に失敗しました: ' + e.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function deleteJob(id, title) {
+      if (!confirm(`「${title}」を削除しますか？\n紐づくテンプレートもすべて削除されます。`)) return;
+      await fetch(`/api/jobs/${id}`, { method: 'DELETE' });
+      await loadAll();
+      showToast('削除しました');
+    }
+
+    // --- Templates ---
+    function renderTemplates() {
+      const el = document.getElementById('templates-list');
+      if (!templates.length) {
+        el.innerHTML = '<div class="empty-state">テンプレートがまだありません。「新規追加」から登録してください。</div>';
+        return;
+      }
+      el.innerHTML = templates.map(t => {
+        const job = jobs.find(j => j.id === t.job_id);
+        return `
+          <div class="item-card">
+            <div class="info">
+              <div class="title">${esc(t.name)}</div>
+              <div class="sub">求人: ${job ? esc(job.title) : '(削除済み)'}</div>
+              <div class="desc">件名: ${esc(t.subject)}</div>
+            </div>
+            <div class="item-actions">
+              <button class="btn-edit" onclick="openTplModal('${t.id}')">編集</button>
+              <button class="btn-delete" onclick="deleteTpl('${t.id}', '${esc(t.name)}')">削除</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openTplModal(id = null) {
+      editingTplId = id;
+      document.getElementById('tpl-modal-title').textContent = id ? 'テンプレートを編集' : 'テンプレートを追加';
+
+      const sel = document.getElementById('tpl-job-id');
+      sel.innerHTML = jobs.map(j => `<option value="${j.id}">${esc(j.title)}（${esc(j.company)}）</option>`).join('');
+
+      if (id) {
+        const t = templates.find(t => t.id === id);
+        sel.value = t.job_id;
+        document.getElementById('tpl-name').value = t.name;
+        document.getElementById('tpl-subject').value = t.subject;
+        document.getElementById('tpl-body').value = t.body;
+      } else {
+        document.getElementById('tpl-name').value = '';
+        document.getElementById('tpl-subject').value = '';
+        document.getElementById('tpl-body').value = '';
+      }
+
+      document.getElementById('tpl-modal-overlay').classList.remove('hidden');
+    }
+
+    function closeTplModal() {
+      document.getElementById('tpl-modal-overlay').classList.add('hidden');
+      editingTplId = null;
+    }
+
+    async function saveTemplate() {
+      const job_id = document.getElementById('tpl-job-id').value;
+      const name = document.getElementById('tpl-name').value.trim();
+      const subject = document.getElementById('tpl-subject').value.trim();
+      const body = document.getElementById('tpl-body').value.trim();
+      if (!job_id || !name || !subject || !body) { alert('すべての項目を入力してください'); return; }
+
+      const btn = document.getElementById('tpl-save-btn');
+      btn.disabled = true;
+
+      try {
+        const url = editingTplId ? `/api/templates/${editingTplId}` : '/api/templates';
+        const method = editingTplId ? 'PUT' : 'POST';
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ job_id, name, subject, body }),
+        });
+        if (!res.ok) throw new Error((await res.json()).detail);
+        await loadAll();
+        closeTplModal();
+        showToast(editingTplId ? 'テンプレートを更新しました' : 'テンプレートを追加しました');
+      } catch (e) {
+        alert('保存に失敗しました: ' + e.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function deleteTpl(id, name) {
+      if (!confirm(`「${name}」を削除しますか？`)) return;
+      await fetch(`/api/templates/${id}`, { method: 'DELETE' });
+      await loadAll();
+      showToast('削除しました');
+    }
+
+    // --- Helpers ---
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function showToast(msg) {
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 2500);
+    }
+
+    loadAll();
+  </script>
+</body>
+</html>
