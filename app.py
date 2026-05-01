@@ -91,6 +91,30 @@ def extract_resume(req: ExtractResumeRequest) -> dict:
     else:
         media_type = "image/png"
 
+    is_pdf = media_type == "application/pdf"
+    extract_text = (
+        "このPDFはビズリーチの候補者レジュメです。"
+        if is_pdf else
+        "この画像はビズリーチの候補者レジュメページです。"
+    ) + (
+        "候補者の情報（氏名、職歴、スキル、学歴、資格など）をすべて読み取り、"
+        "構造化されたテキストとして出力してください。"
+        "テキストをできるだけ忠実に抽出し、レジュメとして読みやすい形式でまとめてください。"
+        "余計な説明は不要です。抽出したレジュメテキストだけを出力してください。"
+    )
+
+    source_block = {
+        "type": "base64",
+        "media_type": media_type,
+        "data": raw,
+    }
+
+    content_block = (
+        {"type": "document", "source": source_block}
+        if is_pdf else
+        {"type": "image", "source": source_block}
+    )
+
     message = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=4096,
@@ -98,24 +122,8 @@ def extract_resume(req: ExtractResumeRequest) -> dict:
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": raw,
-                        },
-                    },
-                    {
-                        "type": "text",
-                        "text": (
-                            "この画像はビズリーチの候補者レジュメページです。"
-                            "画面に表示されている候補者の情報（氏名、職歴、スキル、学歴、資格など）を"
-                            "すべて読み取り、構造化されたテキストとして出力してください。"
-                            "画像内のテキストをできるだけ忠実に抽出し、レジュメとして読みやすい形式でまとめてください。"
-                            "余計な説明は不要です。抽出したレジュメテキストだけを出力してください。"
-                        ),
-                    },
+                    content_block,
+                    {"type": "text", "text": extract_text},
                 ],
             }
         ],
