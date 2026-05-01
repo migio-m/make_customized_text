@@ -253,39 +253,6 @@
 
     .copy-btn:hover { background: #bee3f8; }
 
-    /* Scan overlay */
-    .scan-overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.6);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 100;
-    }
-
-    .scan-box {
-      background: #fff;
-      border-radius: 14px;
-      padding: 28px;
-      max-width: 420px;
-      width: 90%;
-      text-align: center;
-    }
-
-    .scan-box h3 { font-size: 1rem; margin-bottom: 10px; }
-    .scan-box p { font-size: 0.85rem; color: #718096; line-height: 1.6; margin-bottom: 20px; }
-
-    .scan-box .btn-row {
-      display: flex; gap: 10px;
-    }
-
-    .scan-box .btn-row button {
-      flex: 1; padding: 10px; border-radius: 8px; font-size: 0.9rem;
-      font-weight: 600; cursor: pointer; border: none;
-    }
-
-    .btn-confirm { background: #3182ce; color: #fff; }
-    .btn-confirm:hover { background: #2b6cb0; }
-    .btn-cancel { background: #edf2f7; color: #4a5568; }
-    .btn-cancel:hover { background: #e2e8f0; }
 
     #file-input { display: none; }
   </style>
@@ -306,7 +273,7 @@
       <div class="form-group">
         <label>レジュメを入力 または 画面・画像から読み取る</label>
         <div class="resume-actions">
-          <button class="btn-scan" id="scan-btn" onclick="startScreenScan()">
+          <button class="btn-scan" id="scan-btn" onclick="doScreenCapture()">
             🖥 画面をスキャン
           </button>
           <button class="btn-upload" onclick="document.getElementById('file-input').click()">
@@ -360,20 +327,6 @@
     </div>
   </div>
 
-  <!-- スキャン確認モーダル -->
-  <div class="scan-overlay hidden" id="scan-overlay">
-    <div class="scan-box">
-      <h3>🖥 画面スキャン</h3>
-      <p>
-        「共有開始」をクリックした後、ビズリーチの候補者ページが表示されているウィンドウ（またはタブ）を選択してください。<br><br>
-        Claudeが画面を読み取り、レジュメを自動入力します。
-      </p>
-      <div class="btn-row">
-        <button class="btn-cancel" onclick="closeScanOverlay()">キャンセル</button>
-        <button class="btn-confirm" onclick="doScreenCapture()">共有開始</button>
-      </div>
-    </div>
-  </div>
 
   <script>
     let jobs = [];
@@ -464,16 +417,7 @@
 
     // --- Screen scan ---
 
-    function startScreenScan() {
-      document.getElementById('scan-overlay').classList.remove('hidden');
-    }
-
-    function closeScanOverlay() {
-      document.getElementById('scan-overlay').classList.add('hidden');
-    }
-
     async function doScreenCapture() {
-      closeScanOverlay();
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
         showError('このブラウザは画面キャプチャに対応していません。Chrome / Edge をお使いください。');
