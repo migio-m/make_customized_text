@@ -4,7 +4,7 @@ import re
 import uuid
 from pathlib import Path
 
-import anthropic
+import google.generativeai as genai
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
@@ -43,11 +43,12 @@ def save_json(filename: str, data: list) -> None:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def get_claude_client() -> anthropic.Anthropic:
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+def get_gemini_model(model_name: str = "gemini-2.0-flash") -> genai.GenerativeModel:
+    api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY is not set")
-    return anthropic.Anthropic(api_key=api_key)
+        raise HTTPException(status_code=500, detail="GOOGLE_API_KEY is not set")
+    genai.configure(api_key=api_key)
+    return genai.GenerativeModel(model_name)
 
 
 # ---------- Models ----------
@@ -291,23 +292,16 @@ def generate_scout_message(req: GenerateRequest) -> dict:
 以下のJSON形式で出力してください（コードブロック不要）:
 {{"subject": "件名テキスト", "body": "本文テキスト"}}"""
 
-    try:
-        message = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=2048,
-            messages=[{"role": "user", "content": prompt}],
-        )
-    except anthropic.BadRequestError as e:
-        detail = str(e)
-        if "credit balance is too low" in detail:
-            raise HTTPException(status_code=402, detail="APIクレジット残高が不足しています。https://console.anthropic.com/settings/billing でチャージしてください。")
-        raise HTTPException(status_code=400, detail=f"APIリクエストエラー: {detail}")
-    except anthropic.AuthenticationError:
-        raise HTTPException(status_code=401, detail="APIキーが無効です。.envファイルのANTHROPIC_API_KEYを確認してください。")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"APIエラー: {str(e)}")
+    model = get_gemini_model()
 
-    content = message.content[0].text.strip()
+    try:
+        response = model.generate_content(prompt)
+        content = response.text.strip()
+    except Exception as e:
+        detail = str(e)
+        if "API_KEY_INVALID" in detail or "API key not valid" in detail:
+            raise HTTPException(status_code=401, detail="APIキーが無効です。.envファイルのGOOGLE_API_KEYを確認してください。")
+        raise HTTPException(status_code=500, detail=f"APIエラー: {detail}")
 
     # Remove markdown code fences if present
     content = re.sub(r'^```(?:json)?\s*', '', content)
