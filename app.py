@@ -4,7 +4,7 @@ import re
 import uuid
 from pathlib import Path
 
-import google.generativeai as genai
+import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
@@ -43,12 +43,18 @@ def save_json(filename: str, data: list) -> None:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def get_gemini_model(model_name: str = "gemini-2.0-flash") -> genai.GenerativeModel:
+def gemini_generate(prompt: str) -> str:
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="GOOGLE_API_KEY is not set")
-    genai.configure(api_key=api_key)
-    return genai.GenerativeModel(model_name)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    res = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=60)
+    if res.status_code == 400:
+        raise HTTPException(status_code=400, detail=f"APIエラー: {res.json().get('error', {}).get('message', res.text)}")
+    if res.status_code == 401 or res.status_code == 403:
+        raise HTTPException(status_code=401, detail="APIキーが無効です。.envファイルのGOOGLE_API_KEYを確認してください。")
+    res.raise_for_status()
+    return res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
 
 
 # ---------- Models ----------
@@ -256,8 +262,6 @@ def generate_scout_message(req: GenerateRequest) -> dict:
 
     media_label = MEDIA_LABELS.get(req.media, req.media)
 
-    client = get_claude_client()
-
     prompt = f"""あなたはビズリーチのスカウト文作成の専門家です。
 以下の情報をもとに、候補者に刺さる個別最適化されたスカウト文（件名と本文）を作成してください。
 
@@ -292,16 +296,12 @@ def generate_scout_message(req: GenerateRequest) -> dict:
 以下のJSON形式で出力してください（コードブロック不要）:
 {{"subject": "件名テキスト", "body": "本文テキスト"}}"""
 
-    model = get_gemini_model()
-
     try:
-        response = model.generate_content(prompt)
-        content = response.text.strip()
+        content = gemini_generate(prompt)
+    except HTTPException:
+        raise
     except Exception as e:
-        detail = str(e)
-        if "API_KEY_INVALID" in detail or "API key not valid" in detail:
-            raise HTTPException(status_code=401, detail="APIキーが無効です。.envファイルのGOOGLE_API_KEYを確認してください。")
-        raise HTTPException(status_code=500, detail=f"APIエラー: {detail}")
+        raise HTTPException(status_code=500, detail=f"APIエラー: {str(e)}")
 
     # Remove markdown code fences if present
     content = re.sub(r'^```(?:json)?\s*', '', content)
