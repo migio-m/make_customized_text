@@ -291,11 +291,21 @@ def generate_scout_message(req: GenerateRequest) -> dict:
 以下のJSON形式で出力してください（コードブロック不要）:
 {{"subject": "件名テキスト", "body": "本文テキスト"}}"""
 
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=2048,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    try:
+        message = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=2048,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except anthropic.BadRequestError as e:
+        detail = str(e)
+        if "credit balance is too low" in detail:
+            raise HTTPException(status_code=402, detail="APIクレジット残高が不足しています。https://console.anthropic.com/settings/billing でチャージしてください。")
+        raise HTTPException(status_code=400, detail=f"APIリクエストエラー: {detail}")
+    except anthropic.AuthenticationError:
+        raise HTTPException(status_code=401, detail="APIキーが無効です。.envファイルのANTHROPIC_API_KEYを確認してください。")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"APIエラー: {str(e)}")
 
     content = message.content[0].text.strip()
 
