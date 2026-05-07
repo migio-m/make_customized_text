@@ -447,7 +447,11 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ resume, job_id: jobId, template_id: templateId, media: selectedMedia }),
         });
-        if (!res.ok) { const e = await res.json(); throw new Error(e.detail); }
+        if (!res.ok) {
+          let msg = `サーバーエラー (${res.status})`;
+          try { msg = (await res.json()).detail; } catch {}
+          throw new Error(msg);
+        }
         const data = await res.json();
         document.getElementById('result-subject').textContent = data.subject;
         document.getElementById('result-body').textContent = data.body;

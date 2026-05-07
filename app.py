@@ -299,14 +299,22 @@ def generate_scout_message(req: GenerateRequest) -> dict:
 
     content = message.content[0].text.strip()
 
+    # Remove markdown code fences if present
+    content = re.sub(r'^```(?:json)?\s*', '', content)
+    content = re.sub(r'\s*```$', '', content)
+
+    result = None
     try:
         result = json.loads(content)
     except json.JSONDecodeError:
-        match = re.search(r'\{[\s\S]*\}', content)
+        match = re.search(r'\{[\s\S]*?\}(?=\s*$)', content)
         if match:
-            result = json.loads(match.group())
-        else:
-            raise HTTPException(status_code=500, detail="Failed to parse Claude response")
+            try:
+                result = json.loads(match.group())
+            except json.JSONDecodeError:
+                pass
+    if result is None:
+        raise HTTPException(status_code=500, detail=f"Claude応答のJSON解析に失敗しました。応答: {content[:200]}")
 
     return {
         "subject": result.get("subject", ""),
