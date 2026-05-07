@@ -93,47 +93,22 @@
       box-shadow: 0 0 0 3px rgba(49,130,206,0.12);
     }
 
-    textarea { min-height: 200px; }
+    textarea { min-height: 220px; }
 
     .form-group { margin-bottom: 16px; }
 
-    .resume-actions {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
-    }
-
-    .btn-scan, .btn-upload {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 12px;
-      border-radius: 7px;
+    .challenge-box {
+      background: #fffbeb;
+      border: 1px solid #fbd38d;
+      border-radius: 8px;
+      padding: 12px;
       font-size: 0.82rem;
-      font-weight: 500;
-      cursor: pointer;
-      border: none;
-      transition: background 0.15s;
+      color: #744210;
+      white-space: pre-wrap;
+      line-height: 1.6;
+      max-height: 100px;
+      overflow-y: auto;
     }
-
-    .btn-scan {
-      background: #ebf8ff;
-      color: #2b6cb0;
-      border: 1px solid #bee3f8;
-    }
-
-    .btn-scan:hover:not(:disabled) { background: #bee3f8; }
-
-    .btn-upload {
-      background: #f0fff4;
-      color: #276749;
-      border: 1px solid #c6f6d5;
-    }
-
-    .btn-upload:hover { background: #c6f6d5; }
-
-    .btn-scan:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .job-preview {
       background: #f8fafc;
@@ -143,10 +118,31 @@
       font-size: 0.82rem;
       color: #4a5568;
       white-space: pre-wrap;
-      max-height: 140px;
+      max-height: 120px;
       overflow-y: auto;
       line-height: 1.6;
     }
+
+    .media-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .media-btn {
+      padding: 7px 14px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      background: #fff;
+      color: #4a5568;
+      transition: all 0.15s;
+    }
+
+    .media-btn:hover { border-color: #3182ce; color: #3182ce; }
+    .media-btn.selected { background: #3182ce; border-color: #3182ce; color: #fff; }
 
     .btn {
       display: flex;
@@ -209,11 +205,6 @@
       animation: spin 0.7s linear infinite;
     }
 
-    .spinner-dark {
-      border-color: rgba(49,130,206,0.3);
-      border-top-color: #3182ce;
-    }
-
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .error-msg {
@@ -233,7 +224,9 @@
       font-size: 0.8rem;
       padding: 4px 10px;
       border-radius: 20px;
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       margin-bottom: 12px;
     }
 
@@ -253,8 +246,14 @@
 
     .copy-btn:hover { background: #bee3f8; }
 
-
-    #file-input { display: none; }
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #a0aec0;
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 <body>
@@ -271,40 +270,43 @@
     <div class="card">
       <h2>候補者レジュメ <span class="badge">STEP 1</span></h2>
       <div class="form-group">
-        <label>レジュメを入力 または 画面・画像から読み取る</label>
-        <div class="resume-actions">
-          <button class="btn-scan" id="scan-btn" onclick="doScreenCapture()">
-            🖥 画面をスキャン
-          </button>
-          <button class="btn-upload" onclick="document.getElementById('file-input').click()">
-            📄 PDF・画像をアップロード
-          </button>
-          <input type="file" id="file-input" accept="image/*,.pdf" onchange="handleFileUpload(event)" />
-        </div>
-        <textarea id="resume" placeholder="氏名、職歴、スキル、学歴などを含むレジュメテキストをここに貼り付けてください...&#10;または上のボタンでビズリーチの画面から自動読み取り"></textarea>
-      </div>
-      <div id="scan-status" class="hidden" style="font-size:0.82rem; color:#3182ce; display:flex; align-items:center; gap:8px;">
-        <span class="spinner spinner-dark"></span> レジュメを読み取り中...
+        <label>ビズリーチのレジュメをコピー＆ペースト</label>
+        <textarea id="resume" placeholder="氏名、職歴、スキル、学歴などを含むレジュメテキストをここに貼り付けてください..."></textarea>
       </div>
     </div>
 
-    <!-- 右: 求人・テンプレート選択 -->
+    <!-- 右: 求人・媒体・テンプレート選択 -->
     <div class="card">
-      <h2>求人票・テンプレート選択 <span class="badge">STEP 2</span></h2>
+      <h2>求人・媒体・テンプレート <span class="badge">STEP 2</span></h2>
+
       <div class="form-group">
         <label>求人票を選択</label>
         <select id="job-select" onchange="onJobChange()">
           <option value="">-- 求人票を選択してください --</option>
         </select>
       </div>
-      <div class="form-group" id="job-preview-area" style="display:none">
-        <label>求人票の内容</label>
-        <div class="job-preview" id="job-preview"></div>
+
+      <div id="job-preview-area" class="hidden">
+        <div class="form-group">
+          <label>求人内容</label>
+          <div class="job-preview" id="job-preview"></div>
+        </div>
+        <div class="form-group" id="challenge-area" class="hidden">
+          <label>ポジション課題・採用背景</label>
+          <div class="challenge-box" id="challenge-preview"></div>
+        </div>
       </div>
-      <div class="form-group" id="template-area" style="display:none">
-        <label>スカウト文テンプレートを選択</label>
+
+      <div class="form-group hidden" id="media-area">
+        <label>送付媒体を選択</label>
+        <div class="media-grid" id="media-grid"></div>
+      </div>
+
+      <div class="form-group hidden" id="template-area">
+        <label>テンプレートを選択</label>
         <select id="template-select"></select>
       </div>
+
       <button class="btn btn-primary" id="generate-btn" onclick="generate()" disabled>
         スカウト文を生成する
       </button>
@@ -327,13 +329,17 @@
     </div>
   </div>
 
-
   <script>
     let jobs = [];
+    let mediaList = [];
+    let selectedMedia = null;
 
-    async function loadJobs() {
-      const res = await fetch('/api/jobs');
-      jobs = await res.json();
+    async function init() {
+      [jobs, mediaList] = await Promise.all([
+        fetch('/api/jobs').then(r => r.json()),
+        fetch('/api/media').then(r => r.json()),
+      ]);
+
       const sel = document.getElementById('job-select');
       jobs.forEach(j => {
         const opt = document.createElement('option');
@@ -341,27 +347,67 @@
         opt.textContent = `${j.title}（${j.company}）`;
         sel.appendChild(opt);
       });
+
+      const grid = document.getElementById('media-grid');
+      mediaList.forEach(m => {
+        const btn = document.createElement('button');
+        btn.className = 'media-btn';
+        btn.textContent = m.label;
+        btn.dataset.value = m.value;
+        btn.onclick = () => selectMedia(m.value);
+        grid.appendChild(btn);
+      });
     }
 
     async function onJobChange() {
       const jobId = document.getElementById('job-select').value;
+      selectedMedia = null;
       document.getElementById('generate-btn').disabled = true;
+      document.getElementById('template-area').classList.add('hidden');
+      hideError();
 
       if (!jobId) {
-        document.getElementById('job-preview-area').style.display = 'none';
-        document.getElementById('template-area').style.display = 'none';
+        document.getElementById('job-preview-area').classList.add('hidden');
+        document.getElementById('media-area').classList.add('hidden');
         return;
       }
 
       const job = jobs.find(j => j.id === jobId);
       document.getElementById('job-preview').textContent = job.description;
-      document.getElementById('job-preview-area').style.display = 'block';
+      document.getElementById('job-preview-area').classList.remove('hidden');
+
+      // 課題を取得
+      const challenges = await fetch(`/api/challenges/${jobId}`).then(r => r.json());
+      const challengeArea = document.getElementById('challenge-area');
+      if (challenges.length) {
+        document.getElementById('challenge-preview').textContent = challenges.map(c => c.content).join('\n\n');
+        challengeArea.classList.remove('hidden');
+      } else {
+        challengeArea.classList.add('hidden');
+      }
+
+      // 媒体選択をリセット
+      document.querySelectorAll('.media-btn').forEach(b => b.classList.remove('selected'));
+      document.getElementById('media-area').classList.remove('hidden');
+    }
+
+    async function selectMedia(value) {
+      const jobId = document.getElementById('job-select').value;
+      if (!jobId) return;
+
+      selectedMedia = value;
+      document.querySelectorAll('.media-btn').forEach(b => {
+        b.classList.toggle('selected', b.dataset.value === value);
+      });
+
+      hideError();
+      document.getElementById('generate-btn').disabled = true;
+      document.getElementById('template-area').classList.add('hidden');
 
       try {
-        const res = await fetch(`/api/templates/${jobId}`);
+        const res = await fetch(`/api/templates/${jobId}/${value}`);
         if (!res.ok) {
-          document.getElementById('template-area').style.display = 'none';
-          showError('この求人票にテンプレートがありません。管理画面から追加してください。');
+          showError('この求人票×媒体のテンプレートがありません。管理画面から追加してください。');
           return;
         }
         const templates = await res.json();
@@ -373,9 +419,8 @@
           opt.textContent = t.name;
           sel.appendChild(opt);
         });
-        document.getElementById('template-area').style.display = 'block';
+        document.getElementById('template-area').classList.remove('hidden');
         document.getElementById('generate-btn').disabled = false;
-        hideError();
       } catch {
         showError('テンプレートの読み込みに失敗しました');
       }
@@ -387,7 +432,9 @@
       const templateId = document.getElementById('template-select').value;
 
       if (!resume) { showError('レジュメを入力してください'); return; }
-      if (!jobId || !templateId) { showError('求人票とテンプレートを選択してください'); return; }
+      if (!jobId) { showError('求人票を選択してください'); return; }
+      if (!selectedMedia) { showError('媒体を選択してください'); return; }
+      if (!templateId) { showError('テンプレートを選択してください'); return; }
 
       const btn = document.getElementById('generate-btn');
       btn.disabled = true;
@@ -398,13 +445,14 @@
         const res = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ resume, job_id: jobId, template_id: templateId }),
+          body: JSON.stringify({ resume, job_id: jobId, template_id: templateId, media: selectedMedia }),
         });
         if (!res.ok) { const e = await res.json(); throw new Error(e.detail); }
         const data = await res.json();
         document.getElementById('result-subject').textContent = data.subject;
         document.getElementById('result-body').textContent = data.body;
-        document.getElementById('result-meta').textContent = `✓ ${data.company} ／ ${data.job_title}`;
+        document.getElementById('result-meta').innerHTML =
+          `✓ ${data.company} ／ ${data.job_title} <span style="background:#ebf8ff;color:#2b6cb0;padding:2px 8px;border-radius:12px;font-size:0.75rem;">${data.media}</span>`;
         document.getElementById('result-section').classList.remove('hidden');
         document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
       } catch (e) {
@@ -414,73 +462,6 @@
         btn.innerHTML = 'スカウト文を生成する';
       }
     }
-
-    // --- Screen scan ---
-
-    async function doScreenCapture() {
-
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-        showError('このブラウザは画面キャプチャに対応していません。Chrome / Edge をお使いください。');
-        return;
-      }
-
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      } catch {
-        return; // ユーザーがキャンセル
-      }
-
-      const video = document.createElement('video');
-      video.srcObject = stream;
-      await video.play();
-
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
-      stream.getTracks().forEach(t => t.stop());
-
-      const dataUrl = canvas.toDataURL('image/png');
-      await sendImageToExtract(dataUrl);
-    }
-
-    async function handleFileUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async (e) => await sendImageToExtract(e.target.result);
-      reader.readAsDataURL(file);
-      event.target.value = '';
-    }
-
-    async function sendImageToExtract(dataUrl) {
-      const statusEl = document.getElementById('scan-status');
-      const scanBtn = document.getElementById('scan-btn');
-      statusEl.classList.remove('hidden');
-      statusEl.style.display = 'flex';
-      scanBtn.disabled = true;
-      hideError();
-
-      try {
-        const res = await fetch('/api/extract-resume', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image_base64: dataUrl }),
-        });
-        if (!res.ok) { const e = await res.json(); throw new Error(e.detail); }
-        const data = await res.json();
-        document.getElementById('resume').value = data.resume_text;
-      } catch (e) {
-        showError('読み取りに失敗しました: ' + e.message);
-      } finally {
-        statusEl.style.display = 'none';
-        statusEl.classList.add('hidden');
-        scanBtn.disabled = false;
-      }
-    }
-
-    // --- Helpers ---
 
     function showError(msg) {
       const el = document.getElementById('error-area');
@@ -502,7 +483,7 @@
       alert('コピーしました！');
     }
 
-    loadJobs();
+    init();
   </script>
 </body>
 </html>

@@ -76,7 +76,6 @@
 
     .btn-add:hover { background: #2b6cb0; }
 
-    /* List cards */
     .item-card {
       background: #fff;
       border: 1px solid #e2e8f0;
@@ -91,7 +90,7 @@
 
     .item-card .info { flex: 1; min-width: 0; }
     .item-card .title { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
-    .item-card .sub { font-size: 0.8rem; color: #718096; }
+    .item-card .sub { font-size: 0.8rem; color: #718096; margin-bottom: 4px; }
     .item-card .desc {
       font-size: 0.8rem;
       color: #4a5568;
@@ -99,7 +98,16 @@
       white-space: pre-wrap;
       max-height: 60px;
       overflow: hidden;
-      text-overflow: ellipsis;
+    }
+
+    .media-tag {
+      display: inline-block;
+      background: #ebf8ff;
+      color: #2b6cb0;
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 500;
     }
 
     .item-actions { display: flex; gap: 8px; flex-shrink: 0; }
@@ -125,7 +133,6 @@
       font-size: 0.9rem;
     }
 
-    /* Modal */
     .modal-overlay {
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.5);
@@ -204,7 +211,6 @@
       border: none;
       border-radius: 8px;
       font-size: 0.9rem;
-      font-weight: 500;
       cursor: pointer;
     }
 
@@ -212,10 +218,11 @@
 
     .hidden { display: none; }
 
+    .hint { font-size: 0.75rem; color: #a0aec0; margin-top: 4px; }
+
     .toast {
       position: fixed;
-      bottom: 24px;
-      right: 24px;
+      bottom: 24px; right: 24px;
       background: #276749;
       color: #fff;
       padding: 12px 20px;
@@ -230,12 +237,6 @@
       from { opacity: 0; transform: translateY(12px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-
-    .hint {
-      font-size: 0.75rem;
-      color: #a0aec0;
-      margin-top: 4px;
-    }
   </style>
 </head>
 <body>
@@ -249,11 +250,12 @@
 
   <div class="tabs">
     <div class="tab active" onclick="switchTab('jobs')">求人票</div>
+    <div class="tab" onclick="switchTab('challenges')">ポジション課題</div>
     <div class="tab" onclick="switchTab('templates')">テンプレート</div>
   </div>
 
   <div class="container">
-    <!-- 求人票タブ -->
+    <!-- 求人票 -->
     <div class="tab-panel active" id="tab-jobs">
       <div class="section-header">
         <h2>求人票一覧</h2>
@@ -262,7 +264,16 @@
       <div id="jobs-list"></div>
     </div>
 
-    <!-- テンプレートタブ -->
+    <!-- ポジション課題 -->
+    <div class="tab-panel" id="tab-challenges">
+      <div class="section-header">
+        <h2>ポジション課題・採用背景</h2>
+        <button class="btn-add" onclick="openChlModal()">+ 新規追加</button>
+      </div>
+      <div id="challenges-list"></div>
+    </div>
+
+    <!-- テンプレート -->
     <div class="tab-panel" id="tab-templates">
       <div class="section-header">
         <h2>テンプレート一覧</h2>
@@ -287,11 +298,30 @@
       <div class="form-group">
         <label>求人内容 *</label>
         <textarea id="job-description" placeholder="業務内容、求めるスキル、待遇など..."></textarea>
-        <p class="hint">スカウト文生成の参考情報になります。詳しく書くほど精度が上がります。</p>
       </div>
       <div class="modal-actions">
         <button class="btn-cancel-modal" onclick="closeJobModal()">キャンセル</button>
         <button class="btn-save" id="job-save-btn" onclick="saveJob()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 課題モーダル -->
+  <div class="modal-overlay hidden" id="chl-modal-overlay">
+    <div class="modal">
+      <h3 id="chl-modal-title">ポジション課題を追加</h3>
+      <div class="form-group">
+        <label>紐づける求人票 *</label>
+        <select id="chl-job-id"></select>
+      </div>
+      <div class="form-group">
+        <label>課題・採用背景 *</label>
+        <textarea id="chl-content" style="min-height:160px" placeholder="このポジションが必要な背景、解決すべき課題、求める人物像の詳細など...&#10;&#10;例: エンジニア組織が急拡大しており、テックリード不在のままコードレビュー文化が根付いていない。技術負債が積み上がっており..."></textarea>
+        <p class="hint">ここに書いた内容がスカウト文生成の参考情報になります。具体的に書くほど精度が上がります。</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel-modal" onclick="closeChlModal()">キャンセル</button>
+        <button class="btn-save" id="chl-save-btn" onclick="saveChallenge()">保存</button>
       </div>
     </div>
   </div>
@@ -305,18 +335,22 @@
         <select id="tpl-job-id"></select>
       </div>
       <div class="form-group">
+        <label>送付媒体 *</label>
+        <select id="tpl-media"></select>
+      </div>
+      <div class="form-group">
         <label>テンプレート名 *</label>
-        <input type="text" id="tpl-name" placeholder="例: バックエンド向け標準テンプレート" />
+        <input type="text" id="tpl-name" placeholder="例: バックエンド向け標準テンプレート（BizReach）" />
       </div>
       <div class="form-group">
         <label>件名 *</label>
         <input type="text" id="tpl-subject" placeholder="例: 【ご経歴拝見】{candidate_name}様のご経歴にご注目しました" />
-        <p class="hint">使えるプレースホルダー: {candidate_name} {highlight_point} {skill_match} {company_appeal}</p>
+        <p class="hint">プレースホルダー: {candidate_name} {highlight_point} {skill_match} {company_appeal}</p>
       </div>
       <div class="form-group">
         <label>本文 *</label>
-        <textarea id="tpl-body" style="min-height:200px" placeholder="{candidate_name}様&#10;&#10;はじめまして..."></textarea>
-        <p class="hint">プレースホルダーをClaudeが候補者情報に合わせて自動補完します。</p>
+        <textarea id="tpl-body" style="min-height:220px" placeholder="{candidate_name}様&#10;&#10;はじめまして..."></textarea>
+        <p class="hint">Claudeがレジュメ・課題情報をもとにプレースホルダーを自動補完します。</p>
       </div>
       <div class="modal-actions">
         <button class="btn-cancel-modal" onclick="closeTplModal()">キャンセル</button>
@@ -327,33 +361,37 @@
 
   <script>
     let jobs = [];
+    let challenges = [];
     let templates = [];
+    let mediaList = [];
     let editingJobId = null;
+    let editingChlId = null;
     let editingTplId = null;
 
     async function loadAll() {
-      [jobs, templates] = await Promise.all([
+      [jobs, challenges, templates, mediaList] = await Promise.all([
         fetch('/api/jobs').then(r => r.json()),
+        fetch('/api/challenges').then(r => r.json()),
         fetch('/api/templates').then(r => r.json()),
+        fetch('/api/media').then(r => r.json()),
       ]);
       renderJobs();
+      renderChallenges();
       renderTemplates();
     }
 
-    // --- Tab ---
     function switchTab(name) {
-      document.querySelectorAll('.tab').forEach((el, i) => {
-        el.classList.toggle('active', ['jobs', 'templates'][i] === name);
+      ['jobs', 'challenges', 'templates'].forEach((t, i) => {
+        document.querySelectorAll('.tab')[i].classList.toggle('active', t === name);
+        document.getElementById(`tab-${t}`).classList.toggle('active', t === name);
       });
-      document.getElementById('tab-jobs').classList.toggle('active', name === 'jobs');
-      document.getElementById('tab-templates').classList.toggle('active', name === 'templates');
     }
 
     // --- Jobs ---
     function renderJobs() {
       const el = document.getElementById('jobs-list');
       if (!jobs.length) {
-        el.innerHTML = '<div class="empty-state">求人票がまだありません。「新規追加」から登録してください。</div>';
+        el.innerHTML = '<div class="empty-state">求人票がまだありません。</div>';
         return;
       }
       el.innerHTML = jobs.map(j => `
@@ -380,16 +418,13 @@
         document.getElementById('job-company').value = j.company;
         document.getElementById('job-description').value = j.description;
       } else {
-        document.getElementById('job-title').value = '';
-        document.getElementById('job-company').value = '';
-        document.getElementById('job-description').value = '';
+        ['job-title', 'job-company', 'job-description'].forEach(id => document.getElementById(id).value = '');
       }
       document.getElementById('job-modal-overlay').classList.remove('hidden');
     }
 
     function closeJobModal() {
       document.getElementById('job-modal-overlay').classList.add('hidden');
-      editingJobId = null;
     }
 
     async function saveJob() {
@@ -400,12 +435,10 @@
 
       const btn = document.getElementById('job-save-btn');
       btn.disabled = true;
-
       try {
         const url = editingJobId ? `/api/jobs/${editingJobId}` : '/api/jobs';
-        const method = editingJobId ? 'PUT' : 'POST';
         const res = await fetch(url, {
-          method,
+          method: editingJobId ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title, company, description }),
         });
@@ -413,16 +446,85 @@
         await loadAll();
         closeJobModal();
         showToast(editingJobId ? '求人票を更新しました' : '求人票を追加しました');
-      } catch (e) {
-        alert('保存に失敗しました: ' + e.message);
-      } finally {
-        btn.disabled = false;
-      }
+      } catch (e) { alert('保存失敗: ' + e.message); }
+      finally { btn.disabled = false; }
     }
 
     async function deleteJob(id, title) {
-      if (!confirm(`「${title}」を削除しますか？\n紐づくテンプレートもすべて削除されます。`)) return;
+      if (!confirm(`「${title}」を削除しますか？\n紐づく課題・テンプレートもすべて削除されます。`)) return;
       await fetch(`/api/jobs/${id}`, { method: 'DELETE' });
+      await loadAll();
+      showToast('削除しました');
+    }
+
+    // --- Challenges ---
+    function renderChallenges() {
+      const el = document.getElementById('challenges-list');
+      if (!challenges.length) {
+        el.innerHTML = '<div class="empty-state">課題情報がまだありません。「新規追加」から登録してください。</div>';
+        return;
+      }
+      el.innerHTML = challenges.map(c => {
+        const job = jobs.find(j => j.id === c.job_id);
+        return `
+          <div class="item-card">
+            <div class="info">
+              <div class="sub">${job ? esc(job.title) + '（' + esc(job.company) + '）' : '(削除済み)'}</div>
+              <div class="desc" style="max-height:80px">${esc(c.content)}</div>
+            </div>
+            <div class="item-actions">
+              <button class="btn-edit" onclick="openChlModal('${c.id}')">編集</button>
+              <button class="btn-delete" onclick="deleteChallenge('${c.id}')">削除</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openChlModal(id = null) {
+      editingChlId = id;
+      document.getElementById('chl-modal-title').textContent = id ? '課題を編集' : 'ポジション課題を追加';
+      const sel = document.getElementById('chl-job-id');
+      sel.innerHTML = jobs.map(j => `<option value="${j.id}">${esc(j.title)}（${esc(j.company)}）</option>`).join('');
+      if (id) {
+        const c = challenges.find(c => c.id === id);
+        sel.value = c.job_id;
+        document.getElementById('chl-content').value = c.content;
+      } else {
+        document.getElementById('chl-content').value = '';
+      }
+      document.getElementById('chl-modal-overlay').classList.remove('hidden');
+    }
+
+    function closeChlModal() {
+      document.getElementById('chl-modal-overlay').classList.add('hidden');
+    }
+
+    async function saveChallenge() {
+      const job_id = document.getElementById('chl-job-id').value;
+      const content = document.getElementById('chl-content').value.trim();
+      if (!content) { alert('課題内容を入力してください'); return; }
+
+      const btn = document.getElementById('chl-save-btn');
+      btn.disabled = true;
+      try {
+        const url = editingChlId ? `/api/challenges/${editingChlId}` : '/api/challenges';
+        const res = await fetch(url, {
+          method: editingChlId ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ job_id, content }),
+        });
+        if (!res.ok) throw new Error((await res.json()).detail);
+        await loadAll();
+        closeChlModal();
+        showToast(editingChlId ? '課題を更新しました' : '課題を追加しました');
+      } catch (e) { alert('保存失敗: ' + e.message); }
+      finally { btn.disabled = false; }
+    }
+
+    async function deleteChallenge(id) {
+      if (!confirm('この課題情報を削除しますか？')) return;
+      await fetch(`/api/challenges/${id}`, { method: 'DELETE' });
       await loadAll();
       showToast('削除しました');
     }
@@ -431,15 +533,16 @@
     function renderTemplates() {
       const el = document.getElementById('templates-list');
       if (!templates.length) {
-        el.innerHTML = '<div class="empty-state">テンプレートがまだありません。「新規追加」から登録してください。</div>';
+        el.innerHTML = '<div class="empty-state">テンプレートがまだありません。</div>';
         return;
       }
       el.innerHTML = templates.map(t => {
         const job = jobs.find(j => j.id === t.job_id);
+        const media = mediaList.find(m => m.value === t.media);
         return `
           <div class="item-card">
             <div class="info">
-              <div class="title">${esc(t.name)}</div>
+              <div class="title">${esc(t.name)} <span class="media-tag">${media ? esc(media.label) : esc(t.media)}</span></div>
               <div class="sub">求人: ${job ? esc(job.title) : '(削除済み)'}</div>
               <div class="desc">件名: ${esc(t.subject)}</div>
             </div>
@@ -456,12 +559,16 @@
       editingTplId = id;
       document.getElementById('tpl-modal-title').textContent = id ? 'テンプレートを編集' : 'テンプレートを追加';
 
-      const sel = document.getElementById('tpl-job-id');
-      sel.innerHTML = jobs.map(j => `<option value="${j.id}">${esc(j.title)}（${esc(j.company)}）</option>`).join('');
+      const jobSel = document.getElementById('tpl-job-id');
+      jobSel.innerHTML = jobs.map(j => `<option value="${j.id}">${esc(j.title)}（${esc(j.company)}）</option>`).join('');
+
+      const mediaSel = document.getElementById('tpl-media');
+      mediaSel.innerHTML = mediaList.map(m => `<option value="${m.value}">${esc(m.label)}</option>`).join('');
 
       if (id) {
         const t = templates.find(t => t.id === id);
-        sel.value = t.job_id;
+        jobSel.value = t.job_id;
+        mediaSel.value = t.media;
         document.getElementById('tpl-name').value = t.name;
         document.getElementById('tpl-subject').value = t.subject;
         document.getElementById('tpl-body').value = t.body;
@@ -470,42 +577,36 @@
         document.getElementById('tpl-subject').value = '';
         document.getElementById('tpl-body').value = '';
       }
-
       document.getElementById('tpl-modal-overlay').classList.remove('hidden');
     }
 
     function closeTplModal() {
       document.getElementById('tpl-modal-overlay').classList.add('hidden');
-      editingTplId = null;
     }
 
     async function saveTemplate() {
       const job_id = document.getElementById('tpl-job-id').value;
+      const media = document.getElementById('tpl-media').value;
       const name = document.getElementById('tpl-name').value.trim();
       const subject = document.getElementById('tpl-subject').value.trim();
       const body = document.getElementById('tpl-body').value.trim();
-      if (!job_id || !name || !subject || !body) { alert('すべての項目を入力してください'); return; }
+      if (!job_id || !media || !name || !subject || !body) { alert('すべての項目を入力してください'); return; }
 
       const btn = document.getElementById('tpl-save-btn');
       btn.disabled = true;
-
       try {
         const url = editingTplId ? `/api/templates/${editingTplId}` : '/api/templates';
-        const method = editingTplId ? 'PUT' : 'POST';
         const res = await fetch(url, {
-          method,
+          method: editingTplId ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ job_id, name, subject, body }),
+          body: JSON.stringify({ job_id, media, name, subject, body }),
         });
         if (!res.ok) throw new Error((await res.json()).detail);
         await loadAll();
         closeTplModal();
         showToast(editingTplId ? 'テンプレートを更新しました' : 'テンプレートを追加しました');
-      } catch (e) {
-        alert('保存に失敗しました: ' + e.message);
-      } finally {
-        btn.disabled = false;
-      }
+      } catch (e) { alert('保存失敗: ' + e.message); }
+      finally { btn.disabled = false; }
     }
 
     async function deleteTpl(id, name) {
